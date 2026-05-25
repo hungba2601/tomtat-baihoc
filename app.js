@@ -1,0 +1,524 @@
+/* SGK Infographic AI – app.js */
+
+const GAS_LOGIN_URL = 'https://script.google.com/macros/s/AKfycbyNX5ucg3DLfXvh05OteD7rgVo6lFtec50BFOBLcoh9n1oPAvi2RUZ3Kpl3lJLEU2U14w/exec';
+let deviceFingerprint = '';
+// ── DATA: Môn học theo lớp ──────────────────────────────
+const SUBJECTS = {
+  '1':  ['Toán','Tiếng Việt','Đạo đức','Tự nhiên và Xã hội','Hoạt động trải nghiệm','Tiếng Anh'],
+  '2':  ['Toán','Tiếng Việt','Đạo đức','Tự nhiên và Xã hội','Hoạt động trải nghiệm','Tiếng Anh'],
+  '3':  ['Toán','Tiếng Việt','Đạo đức','Tự nhiên và Xã hội','Tin học','Công nghệ','Hoạt động trải nghiệm','Tiếng Anh'],
+  '4':  ['Toán','Tiếng Việt','Đạo đức','Khoa học','Lịch sử và Địa lí','Tin học','Công nghệ','Hoạt động trải nghiệm','Tiếng Anh'],
+  '5':  ['Toán','Tiếng Việt','Đạo đức','Khoa học','Lịch sử và Địa lí','Tin học','Công nghệ','Hoạt động trải nghiệm','Tiếng Anh'],
+  '6':  ['Toán','Ngữ văn','Tiếng Anh','KHTN','Lịch sử và Địa lí','GDCD','Tin học','Công nghệ','Âm nhạc','Mĩ thuật','Hoạt động trải nghiệm'],
+  '7':  ['Toán','Ngữ văn','Tiếng Anh','KHTN','Lịch sử và Địa lí','GDCD','Tin học','Công nghệ','Âm nhạc','Mĩ thuật','Hoạt động trải nghiệm'],
+  '8':  ['Toán','Ngữ văn','Tiếng Anh','KHTN','Lịch sử và Địa lí','GDCD','Tin học','Công nghệ','Âm nhạc','Mĩ thuật','Hoạt động trải nghiệm'],
+  '9':  ['Toán','Ngữ văn','Tiếng Anh','KHTN','Lịch sử và Địa lí','GDCD','Tin học','Công nghệ','Âm nhạc','Mĩ thuật','Hoạt động trải nghiệm'],
+  '10': ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDKT&PL','Tin học','Công nghệ','Hoạt động trải nghiệm'],
+  '11': ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDKT&PL','Tin học','Công nghệ','Hoạt động trải nghiệm'],
+  '12': ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDKT&PL','Tin học','Công nghệ','Hoạt động trải nghiệm'],
+};
+
+// ── STATE ───────────────────────────────────────────────
+const state = {
+  apiKey: '', model: 'gemini-3-flash-preview',
+  grade: '', subject: '', selectedLesson: '', lastInfoHTML: ''
+};
+
+// ── DOM ─────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const apiKeyInput   = $('apiKeyInput');
+const saveApiBtn    = $('saveApiBtn'),    apiStatus      = $('apiStatus');
+const settingsBtn   = $('settingsBtn'),   settingsModal  = $('settingsModal');
+const closeModalBtn = $('closeModalBtn');
+const gradeSelect   = $('gradeSelect'),   subjectSelect  = $('subjectSelect');
+const fetchTocBtn   = $('fetchTocBtn'),   fetchStatus    = $('fetchStatus');
+const lessonContainer = $('lessonContainer');
+const generateBtn   = $('generateBtn'),   genStatus      = $('genStatus');
+const emptyState    = $('emptyState'),    infographicWrapper = $('infographicWrapper');
+const infographicOutput = $('infographicOutput');
+const previewActions = $('previewActions');
+const togglePwd = $('togglePwd');
+
+const loginOverlay = $('loginOverlay');
+const loginTk = $('loginTk'), loginMk = $('loginMk');
+const loginBtn = $('loginBtn'), loginStatus = $('loginStatus');
+const loginTogglePwd = $('loginTogglePwd');
+const userInfo = $('userInfo'), loggedInUser = $('loggedInUser'), logoutBtn = $('logoutBtn');
+
+// ── INIT ────────────────────────────────────────────────
+(function init() {
+  spawnParticles();
+  const savedKey   = localStorage.getItem('sgk_api_key');
+  if (savedKey)   { apiKeyInput.value = savedKey; state.apiKey = savedKey; }
+
+  togglePwd.addEventListener('click', () => {
+    const show = apiKeyInput.type === 'password';
+    apiKeyInput.type = show ? 'text' : 'password';
+    togglePwd.querySelector('svg').innerHTML = show
+      ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+      : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  });
+
+  saveApiBtn.addEventListener('click', saveApi);
+  settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+  closeModalBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+  
+  gradeSelect.addEventListener('change', onGradeChange);
+  subjectSelect.addEventListener('change', onSubjectChange);
+  fetchTocBtn.addEventListener('click', fetchTableOfContents);
+  generateBtn.addEventListener('click', generateInfographic);
+  $('regenerateBtn').addEventListener('click', generateInfographic);
+  $('downloadPng').addEventListener('click', exportPNG);
+  $('downloadHtml').addEventListener('click', exportHTML);
+
+  // ── INIT LOGIN ──────────────────────────────────────────
+  if (window.FingerprintJS) {
+    FingerprintJS.load().then(fp => fp.get()).then(result => {
+      deviceFingerprint = 'HWID-' + result.visitorId.toUpperCase();
+      checkLoginState();
+    }).catch(() => checkLoginState());
+  } else {
+    checkLoginState();
+  }
+
+  function checkLoginState() {
+    const loggedUser = localStorage.getItem('sgk_user_logged');
+    if (loggedUser) {
+      loginOverlay.classList.add('hidden');
+      userInfo.classList.remove('hidden');
+      loggedInUser.textContent = loggedUser;
+    } else {
+      loginOverlay.classList.remove('hidden');
+      userInfo.classList.add('hidden');
+    }
+  }
+
+  loginBtn.addEventListener('click', async () => {
+    const tk = loginTk.value.trim().toLowerCase(); // Tự động chuyển thành chữ thường ngay từ Frontend
+    const mk = loginMk.value.trim();
+    
+    if (!tk || !mk) {
+      showStatus(loginStatus, 'Vui lòng nhập tài khoản và mật khẩu', 'error');
+      return;
+    }
+    
+    if (!deviceFingerprint) {
+      showStatus(loginStatus, 'Đang tải thông tin thiết bị, vui lòng thử lại sau...', 'error');
+      return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.querySelector('.btn-text').classList.add('hidden');
+    loginBtn.querySelector('.btn-loader').classList.remove('hidden');
+    loginStatus.classList.add('hidden');
+
+    if (GAS_LOGIN_URL === 'THAY_URL_WEB_APP_CUA_GOOGLE_APPS_SCRIPT_VAO_DAY') {
+      // Bỏ qua đăng nhập nếu chưa thiết lập GAS URL (để test giao diện)
+      setTimeout(() => {
+        localStorage.setItem('sgk_user_logged', tk);
+        checkLoginState();
+        toast('Chưa có Link GAS! (Đã Bypass)', 'success');
+        resetLoginBtn();
+      }, 1000);
+      return;
+    }
+
+    try {
+      const res = await fetch(GAS_LOGIN_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'login', tk, mk, deviceId: deviceFingerprint }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' } // Tránh CORS preflight
+      });
+      const result = await res.json();
+      
+      if (result.success) {
+        localStorage.setItem('sgk_user_logged', tk);
+        checkLoginState();
+        toast(result.message, 'success');
+      } else {
+        showStatus(loginStatus, result.message, 'error');
+      }
+    } catch (err) {
+      showStatus(loginStatus, 'Lỗi kết nối máy chủ! Có thể sai URL GAS.', 'error');
+    } finally {
+      resetLoginBtn();
+    }
+  });
+
+  function resetLoginBtn() {
+    loginBtn.disabled = false;
+    loginBtn.querySelector('.btn-text').classList.remove('hidden');
+    loginBtn.querySelector('.btn-loader').classList.add('hidden');
+  }
+
+  loginTogglePwd.addEventListener('click', () => {
+    const isPwd = loginMk.type === 'password';
+    loginMk.type = isPwd ? 'text' : 'password';
+    loginTogglePwd.querySelector('svg').innerHTML = isPwd
+      ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+      : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('sgk_user_logged');
+    loginTk.value = '';
+    loginMk.value = '';
+    checkLoginState();
+    toast('Đã đăng xuất', 'success');
+  });
+
+})();
+
+function spawnParticles() {
+  const c = $('bgParticles');
+  const colors = ['#0ea5e9','#38bdf8','#7dd3fc','#0284c7','#bae6fd'];
+  for (let i = 0; i < 16; i++) {
+    const p = document.createElement('div'); p.className = 'particle';
+    const s = Math.random() * 6 + 3;
+    p.style.cssText = `width:${s}px;height:${s}px;left:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*5)]};animation-duration:${Math.random()*18+14}s;animation-delay:${Math.random()*8}s;`;
+    c.appendChild(p);
+  }
+}
+
+// ── API KEY ─────────────────────────────────────────────
+function saveApi() {
+  const key = apiKeyInput.value.trim();
+  if (!key) { showStatus(apiStatus,'Vui lòng nhập API Key!','error'); return; }
+  state.apiKey = key; 
+  // Hardcode model to gemini-3-flash-preview
+  state.model = 'gemini-3-flash-preview';
+  localStorage.setItem('sgk_api_key', key);
+  showStatus(apiStatus,'✓ Đã lưu cài đặt!','success');
+  setTimeout(() => {
+    apiStatus.classList.add('hidden');
+    settingsModal.classList.add('hidden');
+  }, 1000);
+}
+
+// ── GRADE / SUBJECT CHANGE ──────────────────────────────
+function onGradeChange() {
+  const g = gradeSelect.value;
+  state.grade = g;
+  subjectSelect.disabled = !g;
+  subjectSelect.innerHTML = '<option value="">-- Chọn môn --</option>';
+  if (g && SUBJECTS[g]) {
+    SUBJECTS[g].forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      subjectSelect.appendChild(opt);
+    });
+  }
+  fetchTocBtn.disabled = true;
+  resetLessons();
+}
+
+function onSubjectChange() {
+  state.subject = subjectSelect.value;
+  fetchTocBtn.disabled = !state.subject;
+  resetLessons();
+}
+
+function resetLessons() {
+  state.selectedLesson = '';
+  generateBtn.disabled = true;
+  lessonContainer.className = 'topic-placeholder';
+  lessonContainer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><span>Hãy chọn môn và lấy danh sách bài trước</span>`;
+}
+
+// ── FETCH TABLE OF CONTENTS (từ dữ liệu có sẵn) ────────
+function fetchTableOfContents() {
+  if (!state.grade || !state.subject) { toast('⚠️ Chọn Lớp và Môn!','error'); return; }
+
+  const lessons = LESSONS_DB[state.grade]?.[state.subject];
+
+  if (lessons && lessons.length) {
+    renderLessons(lessons);
+    const bookName = state.subject === 'Tiếng Anh' ? 'Global Success' : 'SGK KNTT';
+    showStatus(fetchStatus, `✓ Tìm thấy ${lessons.length} bài học trong ${bookName}!`, 'success');
+    fetchStatus.classList.remove('hidden');
+    setTimeout(() => fetchStatus.classList.add('hidden'), 2500);
+  } else {
+    // Môn chưa có trong database → cho nhập tay
+    lessonContainer.className = 'topic-placeholder';
+    lessonContainer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 9v3m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span>Môn này chưa có dữ liệu sẵn.<br/>Hãy nhập tên bài ở ô bên dưới!</span>`;
+    showStatus(fetchStatus, '⚠️ Vui lòng nhập tên bài tùy chỉnh bên dưới', 'info');
+    fetchStatus.classList.remove('hidden');
+    generateBtn.disabled = false;
+  }
+}
+
+function renderLessons(lessons) {
+  lessonContainer.className = '';
+  lessonContainer.innerHTML = `<div class="topic-list">${
+    lessons.map((l,i) => `<div class="topic-item" data-index="${i}" onclick="selectLesson(${i},'${l.replace(/'/g,"\\'")}')">
+      <span class="topic-num">${String(i+1).padStart(2,'0')}</span>
+      <span class="topic-name">${l}</span>
+    </div>`).join('')
+  }</div>`;
+}
+
+window.selectLesson = function(i, name) {
+  state.selectedLesson = name;
+  document.querySelectorAll('.topic-item').forEach(el => el.classList.remove('selected'));
+  const el = document.querySelector(`.topic-item[data-index="${i}"]`);
+  if (el) el.classList.add('selected');
+  generateBtn.disabled = false;
+};
+
+// ── GENERATE INFOGRAPHIC ────────────────────────────────
+async function generateInfographic() {
+  const lesson = state.selectedLesson;
+  if (!state.apiKey) { toast('⚠️ Nhập API Key trước!','error'); return; }
+  if (!lesson) { toast('⚠️ Vui lòng chọn bài học!','error'); return; }
+  if (!state.grade || !state.subject) { toast('⚠️ Chọn Lớp và Môn học!','error'); return; }
+
+  generateBtn.querySelector('.btn-text').classList.add('hidden');
+  generateBtn.querySelector('.btn-loader').classList.remove('hidden');
+  generateBtn.disabled = true;
+  showStatus(genStatus, '🤖 AI đang tạo infographic từ kiến thức SGK...', 'info');
+  genStatus.classList.remove('hidden');
+  emptyState.classList.add('hidden');
+  infographicWrapper.classList.add('hidden');
+  previewActions.style.display = 'none';
+
+  // Hiện màn hình loading overlay
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  const progressBar = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+  loadingOverlay.classList.remove('hidden');
+  
+  let progress = 0;
+  progressBar.style.width = '0%';
+  progressText.textContent = '0%';
+
+  // Tiến trình giả (Fake progress) tăng từ 0 đến 95%
+  const progressInterval = setInterval(() => {
+    if (progress < 95) {
+      // Tăng ngẫu nhiên từ 1% đến 5%
+      progress += Math.floor(Math.random() * 5) + 1;
+      if (progress > 95) progress = 95;
+      progressBar.style.width = progress + '%';
+      progressText.textContent = progress + '%';
+    }
+  }, 400);
+
+  try {
+    const prompt = buildPrompt(lesson, state.subject, state.grade);
+    const html = await callGemini([{ text: prompt }], false);
+    
+    // Khi AI trả về xong -> Nhảy lên 100%
+    progress = 100;
+    progressBar.style.width = '100%';
+    progressText.textContent = '100%';
+
+    const extracted = extractHTML(html);
+    if (!extracted) throw new Error('AI không trả về HTML hợp lệ');
+
+    state.lastInfoHTML = extracted;
+    infographicOutput.innerHTML = extracted;
+    
+    // Chờ một chút để user thấy số 100% rồi mới tắt overlay
+    setTimeout(() => {
+      loadingOverlay.classList.add('hidden');
+      infographicWrapper.classList.remove('hidden');
+      previewActions.style.display = 'flex';
+      genStatus.classList.add('hidden');
+      toast('✨ Infographic đã được tạo!', 'success');
+    }, 500);
+
+  } catch (err) {
+    loadingOverlay.classList.add('hidden');
+    emptyState.classList.remove('hidden');
+    showStatus(genStatus, `❌ Lỗi: ${err.message}`, 'error');
+  } finally {
+    clearInterval(progressInterval);
+    generateBtn.querySelector('.btn-text').classList.remove('hidden');
+    generateBtn.querySelector('.btn-loader').classList.add('hidden');
+    generateBtn.disabled = false;
+  }
+}
+
+// ── PROMPT ──────────────────────────────────────────────
+function buildPrompt(lesson, subject, grade) {
+  const bookSeries = subject === 'Tiếng Anh' ? 'Global Success' : 'Kết nối tri thức với cuộc sống (KNTT)';
+  const bookTag = subject === 'Tiếng Anh' ? 'Global Success 🌍' : 'SGK KNTT 📚';
+
+  return `Bạn là chuyên gia thiết kế giáo dục Việt Nam. Dựa trên kiến thức về SGK "${lesson}" môn ${subject} lớp ${grade} bộ "${bookSeries}", hãy tạo một INFOGRAPHIC HTML CỰC KỲ SINH ĐỘNG.
+
+━━━ THIẾT KẾ BẮT BUỘC (PHẢI TUÂN THỦ CHÍNH XÁC) ━━━
+
+Dòng đầu tiên PHẢI là:
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+Sau đó là thẻ <div> chính:
+<div style="width:700px;background:linear-gradient(160deg,#FFF8EC 0%,#FEF0F8 50%,#EEF4FF 100%);border:3px solid #E8C87A;border-radius:24px;padding:0;font-family:'Be Vietnam Pro',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
+
+━━━ PHẦN HEADER (nền gradient đậm) ━━━
+<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:22px 26px 18px;position:relative;overflow:hidden;">
+  <!-- Hình trang trí nền -->
+  <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
+  <div style="position:absolute;bottom:-30px;left:30px;width:80px;height:80px;background:rgba(255,255,255,0.06);border-radius:50%;"></div>
+  
+  <!-- Tag môn + Lớp -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <span style="background:#FFD700;color:#1a1a2e;font-size:12px;font-weight:900;padding:5px 14px;border-radius:20px;letter-spacing:0.5px;">[TÊN MÔN] • Lớp [SỐ LỚP]</span>
+    <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:4px 12px;border-radius:20px;">${bookTag}</span>
+  </div>
+  
+  <!-- Tên bài to -->
+  <div style="text-align:center;color:white;font-size:22px;font-weight:900;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.2);">[TÊN BÀI ĐẦY ĐỦ]</div>
+  
+  <!-- SVG minh họa chủ đề (TẠO SVG PHÙ HỢP VỚI BÀI HỌC) -->
+  <div style="text-align:center;margin-top:14px;">
+    [CHÈN SVG MINH HỌA CHÍNH, kích thước width="200" height="110", phong cách flat design màu pastel, mô tả trực quan nội dung bài học. Ví dụ cho bài điện: vẽ bóng đèn, dây điện; bài hóa học: vẽ ống nghiệm, phân tử; bài sinh học: vẽ tế bào; bài toán: vẽ hình học...]
+  </div>
+</div>
+
+━━━ PHẦN NỘI DUNG (4-5 thẻ kiến thức dạng card) ━━━
+Mỗi card có cấu trúc:
+<div style="margin:14px 18px 0;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.07);">
+  <!-- Thanh màu header card -->
+  <div style="background:[GRADIENT];padding:11px 16px;display:flex;align-items:center;gap:10px;">
+    <!-- SVG icon nhỏ (24x24) phù hợp nội dung mục -->
+    [SVG ICON NHỎ 28px]
+    <span style="color:white;font-weight:800;font-size:15px;">[TÊN MỤC]</span>
+    <span style="margin-left:auto;font-size:42px;line-height:1;">[EMOJI TO]</span>
+  </div>
+  <!-- Nội dung card -->
+  <div style="padding:12px 16px;">
+    <!-- Bullet points với icon màu -->
+    <div style="display:flex;flex-direction:column;gap:7px;">
+      <div style="display:flex;gap:9px;align-items:flex-start;">
+        <span style="min-width:22px;height:22px;background:[CLR];border-radius:50%;color:white;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;">✦</span>
+        <span style="font-size:13px;color:#2d2d2d;line-height:1.6;">[NỘI DUNG ĐIỂM 1]</span>
+      </div>
+      <!-- thêm 2-3 bullet tương tự -->
+    </div>
+    <!-- Ô Ví dụ với màu nền -->
+    <div style="margin-top:10px;background:[BG_LIGHT];border-left:4px solid [CLR];border-radius:0 10px 10px 0;padding:8px 12px;">
+      <span style="font-weight:800;color:[CLR];font-size:12px;">💡 Ví dụ thực tế: </span>
+      <span style="font-size:12.5px;color:#444;">[VÍ DỤ SINH ĐỘNG TỪ CUỘC SỐNG]</span>
+    </div>
+  </div>
+</div>
+
+Gradients cho từng mục:
+- Mục 1: background:linear-gradient(90deg,#f093fb,#f5576c) | CLR=#e91e8c | BG=#fff0f7
+- Mục 2: background:linear-gradient(90deg,#4facfe,#00f2fe) | CLR=#0288d1 | BG=#e1f5fe
+- Mục 3: background:linear-gradient(90deg,#43e97b,#38f9d7) | CLR=#00897b | BG=#e0f2f1
+- Mục 4: background:linear-gradient(90deg,#fa709a,#fee140) | CLR=#e65100 | BG=#fff8e1
+- Mục 5: background:linear-gradient(90deg,#a18cd1,#fbc2eb) | CLR=#7b1fa2 | BG=#f3e5f5
+
+━━━ PHẦN GHI NHỚ NHANH (cuối, bắt buộc) ━━━
+<div style="margin:14px 18px 18px;background:linear-gradient(135deg,#f7971e,#ffd200);border-radius:16px;padding:16px 18px;position:relative;overflow:hidden;">
+  <div style="position:absolute;right:-10px;top:-10px;font-size:80px;opacity:0.15;">⭐</div>
+  <div style="text-align:center;font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:11px;">⚡ Ghi nhớ nhanh</div>
+  <!-- 3-4 điểm cốt lõi dạng pill badge -->
+  <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+    <span style="background:rgba(255,255,255,0.85);color:#1a1a2e;font-size:12.5px;font-weight:700;padding:5px 14px;border-radius:20px;">✅ [điểm nhớ 1]</span>
+    <span style="background:rgba(255,255,255,0.85);color:#1a1a2e;font-size:12.5px;font-weight:700;padding:5px 14px;border-radius:20px;">✅ [điểm nhớ 2]</span>
+    <span style="background:rgba(255,255,255,0.85);color:#1a1a2e;font-size:12.5px;font-weight:700;padding:5px 14px;border-radius:20px;">✅ [điểm nhớ 3]</span>
+    <span style="background:#1a1a2e;color:#FFD700;font-size:12.5px;font-weight:800;padding:5px 14px;border-radius:20px;">🏆 [điểm quan trọng nhất]</span>
+  </div>
+</div>
+</div>
+
+━━━ QUY TẮC SVG MINH HỌA ━━━
+Bắt buộc tạo SVG thật sự cho:
+1. Header: SVG lớn (width=200, height=110) minh họa chủ đề bài học bằng flat design
+2. Mỗi card: SVG icon nhỏ (28x28) phù hợp tiêu đề mục
+
+SVG phải dùng màu sắc, hình dạng thật sự (rect, circle, path, polygon, ellipse) để tạo hình minh họa đẹp. KHÔNG dùng emoji thay thế SVG.
+
+VÍ DỤ SVG cho bài Điện:
+<svg width="200" height="110" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="100" cy="55" rx="95" ry="50" fill="rgba(255,255,255,0.1)"/>
+  <rect x="30" y="30" width="40" height="50" rx="6" fill="#FFD700" opacity="0.9"/>
+  <polygon points="50,20 42,42 52,42 44,65 62,38 52,38 60,20" fill="white"/>
+  <circle cx="140" cy="55" r="28" fill="none" stroke="#FFD700" stroke-width="4"/>
+  <path d="M120 55 Q140 30 160 55" stroke="white" stroke-width="3" fill="none"/>
+  <circle cx="140" cy="55" r="8" fill="#FFD700"/>
+</svg>
+
+━━━ YÊU CẦU CUỐI ━━━
+1. Nội dung chính xác từ SGK ${bookSeries} lớp ${grade} môn ${subject} bài "${lesson}"
+2. Tiếng Việt 100%, ví dụ thực tế gần gũi
+3. SVG minh họa THỰC SỰ (không dùng emoji thay), sáng tạo, đẹp
+4. CHỈ TRẢ VỀ CODE HTML THUẦN. Không markdown, không giải thích, không backtick.`;
+}
+
+// ── GEMINI API ───────────────────────────────────────────
+async function callGemini(parts, useSearch = false) {
+  const model = state.model;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.apiKey}`;
+  const body = {
+    contents: [{ role: 'user', parts }],
+    generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+  };
+  if (useSearch) body.tools = [{ googleSearch: {} }];
+
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e?.error?.message || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Không nhận được phản hồi từ Gemini');
+  return text;
+}
+
+// ── HELPERS ──────────────────────────────────────────────
+function extractJSON(text) {
+  try { const m = text.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; }
+  catch { return null; }
+}
+
+function extractHTML(text) {
+  let m = text.match(/```html\s*([\s\S]*?)```/i);
+  if (m) return m[1].trim();
+  m = text.match(/```\s*([\s\S]*?)```/i);
+  if (m) return m[1].trim();
+  const t = text.trim();
+  if (t.startsWith('<link') || t.startsWith('<div') || t.startsWith('<style')) return t;
+  m = t.match(/(<link[\s\S]*|<div[\s\S]*)/i);
+  return m ? m[1].trim() : t;
+}
+
+function showStatus(el, msg, type) {
+  el.textContent = msg; el.className = `status-msg ${type}`; el.classList.remove('hidden');
+}
+
+function toast(msg, type = 'info') {
+  const t = $('toast'); t.textContent = msg; t.className = `toast ${type}`;
+  t.classList.remove('hidden'); clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+// ── EXPORT PNG ────────────────────────────────────────────
+async function exportPNG() {
+  if (!state.lastInfoHTML) return;
+  if (window.html2canvas) {
+    try {
+      const canvas = await html2canvas(infographicOutput, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const a = document.createElement('a'); a.href = canvas.toDataURL('image/png');
+      a.download = `infographic_${Date.now()}.png`; a.click();
+      toast('✅ Đã tải PNG!', 'success');
+    } catch(e) { toast('❌ Lỗi: ' + e.message, 'error'); }
+  } else {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s.onload = exportPNG; document.head.appendChild(s);
+    toast('⏳ Đang tải thư viện xuất ảnh...', 'info');
+  }
+}
+
+// ── EXPORT HTML ───────────────────────────────────────────
+function exportHTML() {
+  if (!state.lastInfoHTML) return;
+  const full = `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"/><title>Infographic SGK</title><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet"/><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#f0f1ff;display:flex;justify-content:center;padding:40px 20px;font-family:'Be Vietnam Pro',sans-serif}</style></head><body>${state.lastInfoHTML}</body></html>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([full], { type: 'text/html;charset=utf-8' }));
+  a.download = `infographic_${Date.now()}.html`; a.click();
+  toast('✅ Đã xuất HTML!', 'success');
+}
