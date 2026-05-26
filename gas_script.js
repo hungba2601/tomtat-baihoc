@@ -16,22 +16,26 @@
  * 13. Dán URL đó vào biến GAS_LOGIN_URL trong file app.js của dự án web.
  */
 
-const SPREADSHEET_ID = 'THAY_ID_BANG_TINH_CUA_BAN_VAO_DAY';
+const SPREADSHEET_ID = '1Cgz8i2g-4wYb7l9KosEpFDUNotOUu7MUV_ZQeMw4yPo';
 
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     const action = data.action;
-    
+
     if (action === 'login') {
       return handleLogin(data.tk, data.mk, data.deviceId);
     }
-    
+
+    if (action === 'changePassword') {
+      return handleChangePassword(data.tk, data.oldPwd, data.newPwd, data.deviceId);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({
       success: false,
       message: 'Hành động không hợp lệ'
     })).setMimeType(ContentService.MimeType.JSON);
-    
+
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
       success: false,
@@ -51,31 +55,25 @@ function handleLogin(tk, mk, deviceId) {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheets()[0];
   const data = sheet.getDataRange().getValues();
   
-  // Dòng đầu tiên (index 0) là header, nên duyệt từ i = 1
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const sheetTk = row[0] ? row[0].toString().trim() : '';
     const sheetMk = row[1] ? row[1].toString().trim() : '';
     const sheetDeviceId = row[2] ? row[2].toString().trim() : '';
     
-    // So sánh tài khoản không phân biệt hoa thường, mật khẩu phân biệt hoa thường
     if (sheetTk.toLowerCase() === tk.toLowerCase() && sheetMk === mk) {
       if (sheetDeviceId === '') {
-        // Tài khoản đúng, chưa có DeviceID -> Ghi DeviceID vào cột C
-        // getRange(row, col) - row bắt đầu từ 1, nên index i tương ứng với row i+1
         sheet.getRange(i + 1, 3).setValue(deviceId);
         return ContentService.createTextOutput(JSON.stringify({
           success: true,
           message: 'Đăng nhập lần đầu thành công. Đã khóa thiết bị!'
         })).setMimeType(ContentService.MimeType.JSON);
       } else if (sheetDeviceId === deviceId) {
-        // Tài khoản đúng, DeviceID khớp
         return ContentService.createTextOutput(JSON.stringify({
           success: true,
           message: 'Đăng nhập thành công!'
         })).setMimeType(ContentService.MimeType.JSON);
       } else {
-        // Tài khoản đúng nhưng khác DeviceID
         return ContentService.createTextOutput(JSON.stringify({
           success: false,
           message: 'Tài khoản này đã được sử dụng trên một thiết bị khác!'
@@ -84,14 +82,66 @@ function handleLogin(tk, mk, deviceId) {
     }
   }
   
-  // Duyệt hết không thấy khớp tk và mk
   return ContentService.createTextOutput(JSON.stringify({
     success: false,
     message: 'Tài khoản hoặc mật khẩu không chính xác!'
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
-// Hàm này giúp test URL xem có hoạt động không
+function handleChangePassword(tk, oldPwd, newPwd, deviceId) {
+  if (!tk || !oldPwd || !newPwd) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Thiếu thông tin đổi mật khẩu'
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (newPwd.length < 4) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Mật khẩu mới phải có ít nhất 4 ký tự!'
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheets()[0];
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const sheetTk = row[0] ? row[0].toString().trim() : '';
+    const sheetMk = row[1] ? row[1].toString().trim() : '';
+    const sheetDeviceId = row[2] ? row[2].toString().trim() : '';
+    
+    if (sheetTk.toLowerCase() === tk.toLowerCase()) {
+      if (sheetMk !== oldPwd) {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Mật khẩu cũ không chính xác!'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      if (sheetDeviceId !== '' && sheetDeviceId !== deviceId) {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Bạn chỉ có thể đổi mật khẩu từ thiết bị đã đăng ký!'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      sheet.getRange(i + 1, 2).setValue(newPwd);
+      
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        message: 'Đổi mật khẩu thành công!'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({
+    success: false,
+    message: 'Không tìm thấy tài khoản!'
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
 function doGet(e) {
   return ContentService.createTextOutput("Hệ thống đăng nhập SGK Infographic đang chạy.");
 }

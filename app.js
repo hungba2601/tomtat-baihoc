@@ -45,6 +45,11 @@ const loginBtn = $('loginBtn'), loginStatus = $('loginStatus');
 const loginTogglePwd = $('loginTogglePwd');
 const userInfo = $('userInfo'), loggedInUser = $('loggedInUser'), logoutBtn = $('logoutBtn');
 
+const changePwdBtn = $('changePwdBtn'), changePwdModal = $('changePwdModal');
+const closeChangePwdBtn = $('closeChangePwdBtn'), submitChangePwdBtn = $('submitChangePwdBtn');
+const oldPwdInput = $('oldPwdInput'), newPwdInput = $('newPwdInput'), confirmPwdInput = $('confirmPwdInput');
+const changePwdStatus = $('changePwdStatus');
+
 // ── INIT ────────────────────────────────────────────────
 (function init() {
   spawnParticles();
@@ -71,6 +76,18 @@ const userInfo = $('userInfo'), loggedInUser = $('loggedInUser'), logoutBtn = $(
   $('downloadPng').addEventListener('click', exportPNG);
   $('downloadHtml').addEventListener('click', exportHTML);
   $('downloadPdf').addEventListener('click', exportPDF);
+
+  // ── INIT CHANGE PASSWORD ───────────────────────────────
+  changePwdBtn.addEventListener('click', () => {
+    if (!localStorage.getItem('sgk_user_logged')) {
+      toast('⚠️ Vui lòng đăng nhập trước!', 'error'); return;
+    }
+    oldPwdInput.value = ''; newPwdInput.value = ''; confirmPwdInput.value = '';
+    changePwdStatus.classList.add('hidden');
+    changePwdModal.classList.remove('hidden');
+  });
+  closeChangePwdBtn.addEventListener('click', () => changePwdModal.classList.add('hidden'));
+  submitChangePwdBtn.addEventListener('click', handleChangePassword);
 
   // ── INIT LOGIN ──────────────────────────────────────────
   if (window.FingerprintJS) {
@@ -581,5 +598,58 @@ async function exportPDF() {
     } else {
       loaded++;
     }
+  }
+}
+
+// ── CHANGE PASSWORD ──────────────────────────────────────
+async function handleChangePassword() {
+  const tk = localStorage.getItem('sgk_user_logged');
+  const oldPwd = oldPwdInput.value.trim();
+  const newPwd = newPwdInput.value.trim();
+  const confirmPwd = confirmPwdInput.value.trim();
+
+  if (!tk) { toast('⚠️ Vui lòng đăng nhập trước!', 'error'); return; }
+  if (!oldPwd || !newPwd || !confirmPwd) {
+    showStatus(changePwdStatus, 'Vui lòng nhập đầy đủ các trường!', 'error'); return;
+  }
+  if (newPwd !== confirmPwd) {
+    showStatus(changePwdStatus, 'Mật khẩu mới và xác nhận không khớp!', 'error'); return;
+  }
+  if (newPwd.length < 4) {
+    showStatus(changePwdStatus, 'Mật khẩu mới phải có ít nhất 4 ký tự!', 'error'); return;
+  }
+  if (oldPwd === newPwd) {
+    showStatus(changePwdStatus, 'Mật khẩu mới phải khác mật khẩu cũ!', 'error'); return;
+  }
+
+  // Disable button + show loader
+  submitChangePwdBtn.disabled = true;
+  submitChangePwdBtn.querySelector('.btn-text').classList.add('hidden');
+  submitChangePwdBtn.querySelector('.btn-loader').classList.remove('hidden');
+  changePwdStatus.classList.add('hidden');
+
+  try {
+    const res = await fetch(GAS_LOGIN_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'changePassword', tk: tk.toLowerCase(), oldPwd, newPwd, deviceId: deviceFingerprint }),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      showStatus(changePwdStatus, '✅ ' + result.message, 'success');
+      toast('✅ Đổi mật khẩu thành công!', 'success');
+      setTimeout(() => {
+        changePwdModal.classList.add('hidden');
+      }, 1500);
+    } else {
+      showStatus(changePwdStatus, result.message, 'error');
+    }
+  } catch (err) {
+    showStatus(changePwdStatus, 'Lỗi kết nối máy chủ!', 'error');
+  } finally {
+    submitChangePwdBtn.disabled = false;
+    submitChangePwdBtn.querySelector('.btn-text').classList.remove('hidden');
+    submitChangePwdBtn.querySelector('.btn-loader').classList.add('hidden');
   }
 }
