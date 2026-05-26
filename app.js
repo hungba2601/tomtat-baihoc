@@ -70,6 +70,7 @@ const userInfo = $('userInfo'), loggedInUser = $('loggedInUser'), logoutBtn = $(
   $('regenerateBtn').addEventListener('click', generateInfographic);
   $('downloadPng').addEventListener('click', exportPNG);
   $('downloadHtml').addEventListener('click', exportHTML);
+  $('downloadPdf').addEventListener('click', exportPDF);
 
   // ── INIT LOGIN ──────────────────────────────────────────
   if (window.FingerprintJS) {
@@ -521,4 +522,64 @@ function exportHTML() {
   a.href = URL.createObjectURL(new Blob([full], { type: 'text/html;charset=utf-8' }));
   a.download = `infographic_${Date.now()}.html`; a.click();
   toast('✅ Đã xuất HTML!', 'success');
+}
+
+// ── EXPORT PDF ────────────────────────────────────────────
+async function exportPDF() {
+  if (!state.lastInfoHTML) return;
+  if (window.html2canvas && window.jspdf) {
+    toast('⏳ Đang tạo PDF...', 'info');
+    try {
+      const canvas = await html2canvas(infographicOutput, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const canvasRatio = canvas.height / canvas.width;
+      
+      // Lề 10mm mỗi bên
+      const margin = 10;
+      let finalWidth = pdfWidth - margin * 2; 
+      let finalHeight = finalWidth * canvasRatio;
+      
+      // Nếu chiều cao vượt quá 1 trang A4 thì bóp lại theo chiều cao
+      if (finalHeight > (pdfHeight - margin * 2)) { 
+        finalHeight = pdfHeight - margin * 2;
+        finalWidth = finalHeight / canvasRatio;
+      }
+      
+      // Căn giữa trang
+      const x = (pdfWidth - finalWidth) / 2;
+      const y = (pdfHeight - finalHeight) / 2;
+      
+      pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight);
+      pdf.save(`infographic_${Date.now()}.pdf`);
+      toast('✅ Đã tải PDF!', 'success');
+    } catch (e) {
+      toast('❌ Lỗi: ' + e.message, 'error');
+    }
+  } else {
+    toast('⏳ Đang tải thư viện xuất PDF...', 'info');
+    let loaded = 0;
+    const checkLoad = () => { loaded++; if (loaded === 2) exportPDF(); };
+    
+    if (!window.html2canvas) {
+      const s1 = document.createElement('script');
+      s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s1.onload = checkLoad; document.head.appendChild(s1);
+    } else {
+      loaded++;
+    }
+    
+    if (!window.jspdf) {
+      const s2 = document.createElement('script');
+      s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s2.onload = checkLoad; document.head.appendChild(s2);
+    } else {
+      loaded++;
+    }
+  }
 }
