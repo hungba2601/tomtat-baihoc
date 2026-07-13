@@ -100,6 +100,12 @@ const changePwdStatus = $('changePwdStatus');
   }
 
   function checkLoginState() {
+    // [TẠM ẨN ĐĂNG NHẬP] - Mọi người có thể vào dùng ngay
+    loginOverlay.classList.add('hidden');
+    userInfo.classList.remove('hidden');
+    loggedInUser.textContent = 'Khách (Bypass Login)';
+
+    /* Code cũ để khôi phục:
     const loggedUser = localStorage.getItem('sgk_user_logged');
     if (loggedUser) {
       loginOverlay.classList.add('hidden');
@@ -109,6 +115,7 @@ const changePwdStatus = $('changePwdStatus');
       loginOverlay.classList.remove('hidden');
       userInfo.classList.add('hidden');
     }
+    */
   }
 
   loginBtn.addEventListener('click', async () => {
