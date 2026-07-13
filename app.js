@@ -20,7 +20,7 @@ const SUBJECTS = {
 
 // ── STATE ───────────────────────────────────────────────
 const state = {
-  apiKey: '', model: 'gemini-3-flash-preview',
+  apiKey: '', model: 'gemini-2.5-flash',
   grade: '', subject: '', selectedLesson: '', lastInfoHTML: ''
 };
 
@@ -210,8 +210,8 @@ function saveApi() {
   const key = apiKeyInput.value.trim();
   if (!key) { showStatus(apiStatus,'Vui lòng nhập API Key!','error'); return; }
   state.apiKey = key; 
-  // Hardcode model to gemini-3-flash-preview
-  state.model = 'gemini-3-flash-preview';
+  // Hardcode model to gemini-2.5-flash
+  state.model = 'gemini-2.5-flash';
   localStorage.setItem('sgk_api_key', key);
   showStatus(apiStatus,'✓ Đã lưu cài đặt!','success');
   setTimeout(() => {
