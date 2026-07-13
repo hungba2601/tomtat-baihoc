@@ -371,10 +371,9 @@ function buildPrompt(lesson, subject, grade) {
   return `Bạn là chuyên gia thiết kế giáo dục Việt Nam. Dựa trên kiến thức về SGK "${lesson}" môn ${subject} lớp ${grade} bộ "${bookSeries}", hãy tạo một INFOGRAPHIC HTML CỰC KỲ SINH ĐỘNG VÀ VÔ CÙNG CHI TIẾT.
 
 ━━━ YÊU CẦU QUAN TRỌNG VỀ ĐỘ DÀI VÀ CHI TIẾT ━━━
-- BẮT BUỘC phải phân tích SÂU, KỸ LƯỠNG và CHI TIẾT toàn bộ kiến thức của bài học. KHÔNG ĐƯỢC VIẾT NGẮN GỌN HAY LÀM SƠ SÀI.
-- BẮT BUỘC phải có từ 4 đến 6 thẻ kiến thức (cards). Mỗi thẻ phải mô tả một phần nội dung chính của bài.
-- MỖI THẺ kiến thức phải có ít nhất 3-4 ý chi tiết (bullet points) đầy đủ chữ, không được để trống, và phải kèm theo 1 ví dụ thực tế.
-- TUYỆT ĐỐI KHÔNG ĐƯỢC DỪNG GIỮA CHỪNG. Phải xuất ra trọn vẹn và đầy đủ code HTML cho đến thẻ đóng cuối cùng.
+- BẮT BUỘC phải tạo ra TỪ 4 ĐẾN 5 THẺ KIẾN THỨC (cards), mỗi thẻ tương ứng với một phần nội dung chính của bài.
+- Nội dung mỗi thẻ cần CÔ ĐỌNG, XÚC TÍCH (mỗi bullet point 1-2 câu). Tránh giải thích quá dài dòng ở một thẻ để đảm bảo không bị vượt quá giới hạn chữ. Đảm bảo phân bổ đều nội dung cho 4-5 thẻ.
+- BẮT BUỘC PHẢI CODE CHO ĐẾN KHI HẾT BÀI, đóng toàn bộ các thẻ HTML. TUYỆT ĐỐI KHÔNG DỪNG GIỮA CHỪNG.
 
 ━━━ THIẾT KẾ BẮT BUỘC (PHẢI TUÂN THỦ CHÍNH XÁC) ━━━
 
@@ -410,8 +409,8 @@ Mỗi card có cấu trúc:
 <div style="margin:14px 18px 0;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.07);">
   <!-- Thanh màu header card -->
   <div style="background:[GRADIENT];padding:11px 16px;display:flex;align-items:center;gap:10px;">
-    <!-- SVG icon nhỏ (24x24) phù hợp nội dung mục -->
-    [SVG ICON NHỎ 28px]
+    <!-- Icon nhỏ (Dùng EMOJI) -->
+    <span style="font-size:24px;">[EMOJI]</span>
     <span style="color:white;font-weight:800;font-size:15px;">[TÊN MỤC]</span>
     <span style="margin-left:auto;font-size:42px;line-height:1;">[EMOJI TO]</span>
   </div>
@@ -454,12 +453,12 @@ Gradients cho từng mục:
 </div>
 </div>
 
-━━━ QUY TẮC SVG MINH HỌA ━━━
-Bắt buộc tạo SVG thật sự cho:
-1. Header: SVG lớn (width=200, height=110) minh họa chủ đề bài học bằng flat design
-2. Mỗi card: SVG icon nhỏ (28x28) phù hợp tiêu đề mục
+━━━ QUY TẮC MINH HỌA (QUAN TRỌNG) ━━━
+Bắt buộc tạo SVG thật sự (code tay) cho:
+1. Header: SVG lớn (width=200, height=110) minh họa chủ đề bài học bằng flat design.
 
-SVG phải dùng màu sắc, hình dạng thật sự (rect, circle, path, polygon, ellipse) để tạo hình minh họa đẹp. KHÔNG dùng emoji thay thế SVG.
+ĐỐI VỚI CÁC THẺ CARD BÊN DƯỚI: 
+- CHỈ SỬ DỤNG EMOJI làm icon. KHÔNG ĐƯỢC VẼ SVG cho các thẻ nội dung để code gọn nhẹ và chạy nhanh hơn, tránh lỗi quá tải.
 
 VÍ DỤ SVG cho bài Điện:
 <svg width="200" height="110" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -472,10 +471,10 @@ VÍ DỤ SVG cho bài Điện:
 </svg>
 
 ━━━ YÊU CẦU CUỐI ━━━
-1. Nội dung chính xác từ SGK ${bookSeries} lớp ${grade} môn ${subject} bài "${lesson}". Viết RẤT DÀI và CHI TIẾT.
-2. Tiếng Việt 100%, ví dụ thực tế gần gũi, giải thích cặn kẽ.
-3. SVG minh họa THỰC SỰ (không dùng emoji thay), sáng tạo, đẹp.
-4. CHỈ TRẢ VỀ CODE HTML THUẦN. Không markdown, không giải thích. HÃY KIỂM TRA ĐẢM BẢO CODE ĐƯỢC ĐÓNG THẺ ĐẦY ĐỦ </div> TỚI TẬN CÙNG VÀ KHÔNG BỊ CẮT BỚT GIỮA CHỪNG.`;
+1. Nội dung chính xác từ SGK ${bookSeries} lớp ${grade} môn ${subject} bài "${lesson}".
+2. Tiếng Việt 100%, ví dụ thực tế ngắn gọn.
+3. Phần Header PHẢI có 1 SVG minh họa đẹp. Phần card bên dưới dùng EMOJI.
+4. CHỈ TRẢ VỀ CODE HTML THUẦN. Không markdown, không giải thích. HÃY TẠO ĐẦY ĐỦ 4-5 THẺ VÀ ĐÓNG THẺ HTML TRỌN VẸN.`;
 }
 
 // ── GEMINI API ───────────────────────────────────────────
