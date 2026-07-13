@@ -368,7 +368,13 @@ function buildPrompt(lesson, subject, grade) {
   const bookSeries = subject === 'Tiếng Anh' ? 'Global Success' : 'Kết nối tri thức với cuộc sống (KNTT)';
   const bookTag = subject === 'Tiếng Anh' ? 'Global Success 🌍' : 'SGK KNTT 📚';
 
-  return `Bạn là chuyên gia thiết kế giáo dục Việt Nam. Dựa trên kiến thức về SGK "${lesson}" môn ${subject} lớp ${grade} bộ "${bookSeries}", hãy tạo một INFOGRAPHIC HTML CỰC KỲ SINH ĐỘNG.
+  return `Bạn là chuyên gia thiết kế giáo dục Việt Nam. Dựa trên kiến thức về SGK "${lesson}" môn ${subject} lớp ${grade} bộ "${bookSeries}", hãy tạo một INFOGRAPHIC HTML CỰC KỲ SINH ĐỘNG VÀ VÔ CÙNG CHI TIẾT.
+
+━━━ YÊU CẦU QUAN TRỌNG VỀ ĐỘ DÀI VÀ CHI TIẾT ━━━
+- BẮT BUỘC phải phân tích SÂU, KỸ LƯỠNG và CHI TIẾT toàn bộ kiến thức của bài học. KHÔNG ĐƯỢC VIẾT NGẮN GỌN HAY LÀM SƠ SÀI.
+- BẮT BUỘC phải có từ 4 đến 6 thẻ kiến thức (cards). Mỗi thẻ phải mô tả một phần nội dung chính của bài.
+- MỖI THẺ kiến thức phải có ít nhất 3-4 ý chi tiết (bullet points) đầy đủ chữ, không được để trống, và phải kèm theo 1 ví dụ thực tế.
+- TUYỆT ĐỐI KHÔNG ĐƯỢC DỪNG GIỮA CHỪNG. Phải xuất ra trọn vẹn và đầy đủ code HTML cho đến thẻ đóng cuối cùng.
 
 ━━━ THIẾT KẾ BẮT BUỘC (PHẢI TUÂN THỦ CHÍNH XÁC) ━━━
 
@@ -466,10 +472,10 @@ VÍ DỤ SVG cho bài Điện:
 </svg>
 
 ━━━ YÊU CẦU CUỐI ━━━
-1. Nội dung chính xác từ SGK ${bookSeries} lớp ${grade} môn ${subject} bài "${lesson}"
-2. Tiếng Việt 100%, ví dụ thực tế gần gũi
-3. SVG minh họa THỰC SỰ (không dùng emoji thay), sáng tạo, đẹp
-4. CHỈ TRẢ VỀ CODE HTML THUẦN. Không markdown, không giải thích, không backtick.`;
+1. Nội dung chính xác từ SGK ${bookSeries} lớp ${grade} môn ${subject} bài "${lesson}". Viết RẤT DÀI và CHI TIẾT.
+2. Tiếng Việt 100%, ví dụ thực tế gần gũi, giải thích cặn kẽ.
+3. SVG minh họa THỰC SỰ (không dùng emoji thay), sáng tạo, đẹp.
+4. CHỈ TRẢ VỀ CODE HTML THUẦN. Không markdown, không giải thích. HÃY KIỂM TRA ĐẢM BẢO CODE ĐƯỢC ĐÓNG THẺ ĐẦY ĐỦ </div> TỚI TẬN CÙNG VÀ KHÔNG BỊ CẮT BỚT GIỮA CHỪNG.`;
 }
 
 // ── GEMINI API ───────────────────────────────────────────
