@@ -90,13 +90,11 @@ const changePwdStatus = $('changePwdStatus');
   submitChangePwdBtn.addEventListener('click', handleChangePassword);
 
   // ── INIT LOGIN ──────────────────────────────────────────
+  checkLoginState();
   if (window.FingerprintJS) {
     FingerprintJS.load().then(fp => fp.get()).then(result => {
       deviceFingerprint = 'HWID-' + result.visitorId.toUpperCase();
-      checkLoginState();
-    }).catch(() => checkLoginState());
-  } else {
-    checkLoginState();
+    }).catch(() => {});
   }
 
   function checkLoginState() {
