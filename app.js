@@ -329,18 +329,20 @@ async function generateInfographic() {
 
   try {
     const prompt = buildPrompt(lesson, state.subject, state.grade);
-    const html = await callGemini([{ text: prompt }], false);
+    const responseText = await callGemini([{ text: prompt }], false);
     
     // Khi AI trả về xong -> Nhảy lên 100%
     progress = 100;
     progressBar.style.width = '100%';
     progressText.textContent = '100%';
 
-    const extracted = extractHTML(html);
-    if (!extracted) throw new Error('AI không trả về HTML hợp lệ');
+    const data = extractJSON(responseText);
+    if (!data || !data.sections) throw new Error('AI không trả về dữ liệu cấu trúc bài học hợp lệ. Vui lòng thử lại.');
 
-    state.lastInfoHTML = extracted;
-    infographicOutput.innerHTML = extracted;
+    const finalHtml = buildInfographicHTML(data, state.subject, state.grade);
+    
+    state.lastInfoHTML = finalHtml;
+    infographicOutput.innerHTML = finalHtml;
     
     // Chờ một chút để user thấy số 100% rồi mới tắt overlay
     setTimeout(() => {
@@ -363,118 +365,113 @@ async function generateInfographic() {
   }
 }
 
-// ── PROMPT ──────────────────────────────────────────────
+// ── PROMPT & HTML BUILDER ──────────────────────────────────────────────
 function buildPrompt(lesson, subject, grade) {
-  const bookSeries = subject === 'Tiếng Anh' ? 'Global Success' : 'Kết nối tri thức với cuộc sống (KNTT)';
+  return `Bạn là chuyên gia giáo dục. Hãy tóm tắt SÂU, CHI TIẾT và BAO QUÁT toàn bộ nội dung bài học: "${lesson}" môn ${subject} lớp ${grade}.
+TRẢ VỀ DUY NHẤT MỘT CHUỖI JSON HỢP LỆ THEO ĐÚNG CẤU TRÚC SAU (không giải thích, không dùng markdown code block, chỉ xuất JSON thuần):
+{
+  "title": "Tên bài học đầy đủ",
+  "mainEmoji": "1 Emoji lớn minh họa chính cho bài",
+  "sections": [
+    {
+      "title": "Tên phần nội dung (ngắn gọn)",
+      "icon": "1 Emoji minh họa phần này",
+      "bullets": ["Ý chi tiết 1 (1-2 câu)", "Ý chi tiết 2", "Ý chi tiết 3", "Ý chi tiết 4"],
+      "example": "1 ví dụ thực tế cực kỳ súc tích (có thể để rỗng nếu không cần)"
+    }
+  ],
+  "reminders": ["Điểm cốt lõi 1", "Điểm cốt lõi 2", "Điểm cốt lõi 3"]
+}
+YÊU CẦU QUAN TRỌNG:
+- Phân tích và tóm tắt TOÀN BỘ nội dung bài học, không được bỏ sót kiến thức quan trọng nào.
+- Bắt buộc chia thành TỪ 4 ĐẾN 6 PHẦN (sections) để phủ kín bài. Mỗi phần phải có đủ 3-4 ý (bullets).
+- Nội dung dài, đầy đủ ý nhưng câu chữ súc tích.
+- TUYỆT ĐỐI CHỈ XUẤT RA JSON.`;
+}
+
+function buildInfographicHTML(data, subject, grade) {
   const bookTag = subject === 'Tiếng Anh' ? 'Global Success 🌍' : 'SGK KNTT 📚';
+  const gradients = [
+    { bg: 'linear-gradient(90deg,#f093fb,#f5576c)', clr: '#e91e8c', light: '#fff0f7' },
+    { bg: 'linear-gradient(90deg,#4facfe,#00f2fe)', clr: '#0288d1', light: '#e1f5fe' },
+    { bg: 'linear-gradient(90deg,#43e97b,#38f9d7)', clr: '#00897b', light: '#e0f2f1' },
+    { bg: 'linear-gradient(90deg,#fa709a,#fee140)', clr: '#e65100', light: '#fff8e1' },
+    { bg: 'linear-gradient(90deg,#a18cd1,#fbc2eb)', clr: '#7b1fa2', light: '#f3e5f5' },
+    { bg: 'linear-gradient(90deg,#f6d365,#fda085)', clr: '#f57c00', light: '#fff3e0' }
+  ];
 
-  return `Bạn là chuyên gia thiết kế giáo dục Việt Nam. Dựa trên kiến thức về SGK "${lesson}" môn ${subject} lớp ${grade} bộ "${bookSeries}", hãy tạo một INFOGRAPHIC HTML CỰC KỲ SINH ĐỘNG VÀ VÔ CÙNG CHI TIẾT.
+  let sectionsHTML = '';
+  if (data.sections && Array.isArray(data.sections)) {
+    data.sections.forEach((sec, i) => {
+      const style = gradients[i % gradients.length];
+      let bulletsHTML = '';
+      if (sec.bullets && Array.isArray(sec.bullets)) {
+        sec.bullets.forEach(b => {
+          bulletsHTML += \`<div style="display:flex;gap:9px;align-items:flex-start;">
+            <span style="min-width:22px;height:22px;background:\${style.clr};border-radius:50%;color:white;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;">✦</span>
+            <span style="font-size:13px;color:#2d2d2d;line-height:1.6;">\${b}</span>
+          </div>\`;
+        });
+      }
 
-━━━ YÊU CẦU QUAN TRỌNG VỀ ĐỘ DÀI VÀ CHI TIẾT ━━━
-- BẮT BUỘC phải tạo ra TỪ 4 ĐẾN 5 THẺ KIẾN THỨC (cards), mỗi thẻ tương ứng với một phần nội dung chính của bài.
-- Nội dung mỗi thẻ cần CÔ ĐỌNG, XÚC TÍCH (mỗi bullet point 1-2 câu). Tránh giải thích quá dài dòng ở một thẻ để đảm bảo không bị vượt quá giới hạn chữ. Đảm bảo phân bổ đều nội dung cho 4-5 thẻ.
-- BẮT BUỘC PHẢI CODE CHO ĐẾN KHI HẾT BÀI, đóng toàn bộ các thẻ HTML. TUYỆT ĐỐI KHÔNG DỪNG GIỮA CHỪNG.
-
-━━━ THIẾT KẾ BẮT BUỘC (PHẢI TUÂN THỦ CHÍNH XÁC) ━━━
-
-Dòng đầu tiên PHẢI là:
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-
-Sau đó là thẻ <div> chính:
-<div style="width:700px;background:linear-gradient(160deg,#FFF8EC 0%,#FEF0F8 50%,#EEF4FF 100%);border:3px solid #E8C87A;border-radius:24px;padding:0;font-family:'Be Vietnam Pro',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
-
-━━━ PHẦN HEADER (nền gradient đậm) ━━━
-<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:22px 26px 18px;position:relative;overflow:hidden;">
-  <!-- Hình trang trí nền -->
-  <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
-  <div style="position:absolute;bottom:-30px;left:30px;width:80px;height:80px;background:rgba(255,255,255,0.06);border-radius:50%;"></div>
-  
-  <!-- Tag môn + Lớp -->
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-    <span style="background:#FFD700;color:#1a1a2e;font-size:12px;font-weight:900;padding:5px 14px;border-radius:20px;letter-spacing:0.5px;">[TÊN MÔN] • Lớp [SỐ LỚP]</span>
-    <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:4px 12px;border-radius:20px;">${bookTag}</span>
-  </div>
-  
-  <!-- Tên bài to -->
-  <div style="text-align:center;color:white;font-size:22px;font-weight:900;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.2);">[TÊN BÀI ĐẦY ĐỦ]</div>
-  
-  <!-- SVG minh họa chủ đề (TẠO SVG PHÙ HỢP VỚI BÀI HỌC) -->
-  <div style="text-align:center;margin-top:14px;">
-    [CHÈN SVG MINH HỌA CHÍNH, kích thước width="200" height="110", phong cách flat design màu pastel, mô tả trực quan nội dung bài học. Ví dụ cho bài điện: vẽ bóng đèn, dây điện; bài hóa học: vẽ ống nghiệm, phân tử; bài sinh học: vẽ tế bào; bài toán: vẽ hình học...]
-  </div>
-</div>
-
-━━━ PHẦN NỘI DUNG (4-5 thẻ kiến thức dạng card) ━━━
-Mỗi card có cấu trúc:
+      sectionsHTML += \`
 <div style="margin:14px 18px 0;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.07);">
-  <!-- Thanh màu header card -->
-  <div style="background:[GRADIENT];padding:11px 16px;display:flex;align-items:center;gap:10px;">
-    <!-- Icon nhỏ (Dùng EMOJI) -->
-    <span style="font-size:24px;">[EMOJI]</span>
-    <span style="color:white;font-weight:800;font-size:15px;">[TÊN MỤC]</span>
-    <span style="margin-left:auto;font-size:42px;line-height:1;">[EMOJI TO]</span>
+  <div style="background:\${style.bg};padding:11px 16px;display:flex;align-items:center;gap:10px;">
+    <span style="font-size:24px;">\${sec.icon || '📌'}</span>
+    <span style="color:white;font-weight:800;font-size:15px;">\${sec.title}</span>
   </div>
-  <!-- Nội dung card -->
   <div style="padding:12px 16px;">
-    <!-- Bullet points với icon màu -->
     <div style="display:flex;flex-direction:column;gap:7px;">
-      <div style="display:flex;gap:9px;align-items:flex-start;">
-        <span style="min-width:22px;height:22px;background:[CLR];border-radius:50%;color:white;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;">✦</span>
-        <span style="font-size:13px;color:#2d2d2d;line-height:1.6;">[NỘI DUNG ĐIỂM 1]</span>
-      </div>
-      <!-- thêm 2-3 bullet tương tự -->
+      \${bulletsHTML}
     </div>
-    <!-- Ô Ví dụ với màu nền -->
-    <div style="margin-top:10px;background:[BG_LIGHT];border-left:4px solid [CLR];border-radius:0 10px 10px 0;padding:8px 12px;">
-      <span style="font-weight:800;color:[CLR];font-size:12px;">💡 Ví dụ thực tế: </span>
-      <span style="font-size:12.5px;color:#444;">[VÍ DỤ SINH ĐỘNG TỪ CUỘC SỐNG]</span>
-    </div>
+    \${sec.example ? \`
+    <div style="margin-top:10px;background:\${style.light};border-left:4px solid \${style.clr};border-radius:0 10px 10px 0;padding:8px 12px;">
+      <span style="font-weight:800;color:\${style.clr};font-size:12px;">💡 Ví dụ: </span>
+      <span style="font-size:12.5px;color:#444;">\${sec.example}</span>
+    </div>\` : ''}
   </div>
-</div>
+</div>\`;
+    });
+  }
 
-Gradients cho từng mục:
-- Mục 1: background:linear-gradient(90deg,#f093fb,#f5576c) | CLR=#e91e8c | BG=#fff0f7
-- Mục 2: background:linear-gradient(90deg,#4facfe,#00f2fe) | CLR=#0288d1 | BG=#e1f5fe
-- Mục 3: background:linear-gradient(90deg,#43e97b,#38f9d7) | CLR=#00897b | BG=#e0f2f1
-- Mục 4: background:linear-gradient(90deg,#fa709a,#fee140) | CLR=#e65100 | BG=#fff8e1
-- Mục 5: background:linear-gradient(90deg,#a18cd1,#fbc2eb) | CLR=#7b1fa2 | BG=#f3e5f5
-
-━━━ PHẦN GHI NHỚ NHANH (cuối, bắt buộc) ━━━
+  let remindersHTML = '';
+  if (data.reminders && Array.isArray(data.reminders) && data.reminders.length > 0) {
+    let badges = '';
+    data.reminders.forEach((r, i) => {
+      if (i === data.reminders.length - 1) {
+        badges += \`<span style="background:#1a1a2e;color:#FFD700;font-size:12.5px;font-weight:800;padding:5px 14px;border-radius:20px;">🏆 \${r}</span>\`;
+      } else {
+        badges += \`<span style="background:rgba(255,255,255,0.85);color:#1a1a2e;font-size:12.5px;font-weight:700;padding:5px 14px;border-radius:20px;">✅ \${r}</span>\`;
+      }
+    });
+    remindersHTML = \`
 <div style="margin:14px 18px 18px;background:linear-gradient(135deg,#f7971e,#ffd200);border-radius:16px;padding:16px 18px;position:relative;overflow:hidden;">
   <div style="position:absolute;right:-10px;top:-10px;font-size:80px;opacity:0.15;">⭐</div>
   <div style="text-align:center;font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:11px;">⚡ Ghi nhớ nhanh</div>
-  <!-- 3-4 điểm cốt lõi dạng pill badge -->
   <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
-    <span style="background:rgba(255,255,255,0.85);color:#1a1a2e;font-size:12.5px;font-weight:700;padding:5px 14px;border-radius:20px;">✅ [điểm nhớ 1]</span>
-    <span style="background:rgba(255,255,255,0.85);color:#1a1a2e;font-size:12.5px;font-weight:700;padding:5px 14px;border-radius:20px;">✅ [điểm nhớ 2]</span>
-    <span style="background:rgba(255,255,255,0.85);color:#1a1a2e;font-size:12.5px;font-weight:700;padding:5px 14px;border-radius:20px;">✅ [điểm nhớ 3]</span>
-    <span style="background:#1a1a2e;color:#FFD700;font-size:12.5px;font-weight:800;padding:5px 14px;border-radius:20px;">🏆 [điểm quan trọng nhất]</span>
+    \${badges}
   </div>
-</div>
-</div>
+</div>\`;
+  }
 
-━━━ QUY TẮC MINH HỌA (QUAN TRỌNG) ━━━
-Bắt buộc tạo SVG thật sự (code tay) cho:
-1. Header: SVG lớn (width=200, height=110) minh họa chủ đề bài học bằng flat design.
-
-ĐỐI VỚI CÁC THẺ CARD BÊN DƯỚI: 
-- CHỈ SỬ DỤNG EMOJI làm icon. KHÔNG ĐƯỢC VẼ SVG cho các thẻ nội dung để code gọn nhẹ và chạy nhanh hơn, tránh lỗi quá tải.
-
-VÍ DỤ SVG cho bài Điện:
-<svg width="200" height="110" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <ellipse cx="100" cy="55" rx="95" ry="50" fill="rgba(255,255,255,0.1)"/>
-  <rect x="30" y="30" width="40" height="50" rx="6" fill="#FFD700" opacity="0.9"/>
-  <polygon points="50,20 42,42 52,42 44,65 62,38 52,38 60,20" fill="white"/>
-  <circle cx="140" cy="55" r="28" fill="none" stroke="#FFD700" stroke-width="4"/>
-  <path d="M120 55 Q140 30 160 55" stroke="white" stroke-width="3" fill="none"/>
-  <circle cx="140" cy="55" r="8" fill="#FFD700"/>
-</svg>
-
-━━━ YÊU CẦU CUỐI ━━━
-1. Nội dung chính xác từ SGK ${bookSeries} lớp ${grade} môn ${subject} bài "${lesson}".
-2. Tiếng Việt 100%, ví dụ thực tế ngắn gọn.
-3. Phần Header PHẢI có 1 SVG minh họa đẹp. Phần card bên dưới dùng EMOJI.
-4. CHỈ TRẢ VỀ CODE HTML THUẦN. Không markdown, không giải thích. HÃY TẠO ĐẦY ĐỦ 4-5 THẺ VÀ ĐÓNG THẺ HTML TRỌN VẸN.`;
+  return \`
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<div style="width:700px;background:linear-gradient(160deg,#FFF8EC 0%,#FEF0F8 50%,#EEF4FF 100%);border:3px solid #E8C87A;border-radius:24px;padding:0;font-family:'Be Vietnam Pro',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;margin:0 auto;">
+  <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:22px 26px 18px;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
+    <div style="position:absolute;bottom:-30px;left:30px;width:80px;height:80px;background:rgba(255,255,255,0.06);border-radius:50%;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="background:#FFD700;color:#1a1a2e;font-size:12px;font-weight:900;padding:5px 14px;border-radius:20px;letter-spacing:0.5px;">\${subject.toUpperCase()} • Lớp \${grade}</span>
+      <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:4px 12px;border-radius:20px;">\${bookTag}</span>
+    </div>
+    <div style="text-align:center;color:white;font-size:22px;font-weight:900;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.2);">\${data.title}</div>
+    <div style="text-align:center;margin-top:14px;font-size:70px;line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.2));">
+      \${data.mainEmoji || '📚'}
+    </div>
+  </div>
+  \${sectionsHTML}
+  \${remindersHTML}
+</div>\`;
 }
 
 // ── GEMINI API ───────────────────────────────────────────
@@ -483,7 +480,7 @@ async function callGemini(parts, useSearch = false) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.apiKey}`;
   const body = {
     contents: [{ role: 'user', parts }],
-    generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+    generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: "application/json" }
   };
   if (useSearch) body.tools = [{ googleSearch: {} }];
 
