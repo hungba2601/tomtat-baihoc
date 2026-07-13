@@ -405,30 +405,30 @@ function buildInfographicHTML(data, subject, grade) {
       let bulletsHTML = '';
       if (sec.bullets && Array.isArray(sec.bullets)) {
         sec.bullets.forEach(b => {
-          bulletsHTML += \`<div style="display:flex;gap:9px;align-items:flex-start;">
-            <span style="min-width:22px;height:22px;background:\${style.clr};border-radius:50%;color:white;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;">✦</span>
-            <span style="font-size:13px;color:#2d2d2d;line-height:1.6;">\${b}</span>
-          </div>\`;
+          bulletsHTML += `<div style="display:flex;gap:9px;align-items:flex-start;">
+            <span style="min-width:22px;height:22px;background:${style.clr};border-radius:50%;color:white;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;">✦</span>
+            <span style="font-size:13px;color:#2d2d2d;line-height:1.6;">${b}</span>
+          </div>`;
         });
       }
 
-      sectionsHTML += \`
+      sectionsHTML += `
 <div style="margin:14px 18px 0;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.07);">
-  <div style="background:\${style.bg};padding:11px 16px;display:flex;align-items:center;gap:10px;">
-    <span style="font-size:24px;">\${sec.icon || '📌'}</span>
-    <span style="color:white;font-weight:800;font-size:15px;">\${sec.title}</span>
+  <div style="background:${style.bg};padding:11px 16px;display:flex;align-items:center;gap:10px;">
+    <span style="font-size:24px;">${sec.icon || '📌'}</span>
+    <span style="color:white;font-weight:800;font-size:15px;">${sec.title}</span>
   </div>
   <div style="padding:12px 16px;">
     <div style="display:flex;flex-direction:column;gap:7px;">
-      \${bulletsHTML}
+      ${bulletsHTML}
     </div>
-    \${sec.example ? \`
-    <div style="margin-top:10px;background:\${style.light};border-left:4px solid \${style.clr};border-radius:0 10px 10px 0;padding:8px 12px;">
-      <span style="font-weight:800;color:\${style.clr};font-size:12px;">💡 Ví dụ: </span>
-      <span style="font-size:12.5px;color:#444;">\${sec.example}</span>
-    </div>\` : ''}
+    ${sec.example ? `
+    <div style="margin-top:10px;background:${style.light};border-left:4px solid ${style.clr};border-radius:0 10px 10px 0;padding:8px 12px;">
+      <span style="font-weight:800;color:${style.clr};font-size:12px;">💡 Ví dụ: </span>
+      <span style="font-size:12.5px;color:#444;">${sec.example}</span>
+    </div>` : ''}
   </div>
-</div>\`;
+</div>`;
     });
   }
 
@@ -437,39 +437,39 @@ function buildInfographicHTML(data, subject, grade) {
     let badges = '';
     data.reminders.forEach((r, i) => {
       if (i === data.reminders.length - 1) {
-        badges += \`<span style="background:#1a1a2e;color:#FFD700;font-size:12.5px;font-weight:800;padding:5px 14px;border-radius:20px;">🏆 \${r}</span>\`;
+        badges += `<span style="background:#1a1a2e;color:#FFD700;font-size:12.5px;font-weight:800;padding:5px 14px;border-radius:20px;">🏆 ${r}</span>`;
       } else {
-        badges += \`<span style="background:rgba(255,255,255,0.85);color:#1a1a2e;font-size:12.5px;font-weight:700;padding:5px 14px;border-radius:20px;">✅ \${r}</span>\`;
+        badges += `<span style="background:rgba(255,255,255,0.85);color:#1a1a2e;font-size:12.5px;font-weight:700;padding:5px 14px;border-radius:20px;">✅ ${r}</span>`;
       }
     });
-    remindersHTML = \`
+    remindersHTML = `
 <div style="margin:14px 18px 18px;background:linear-gradient(135deg,#f7971e,#ffd200);border-radius:16px;padding:16px 18px;position:relative;overflow:hidden;">
   <div style="position:absolute;right:-10px;top:-10px;font-size:80px;opacity:0.15;">⭐</div>
   <div style="text-align:center;font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:11px;">⚡ Ghi nhớ nhanh</div>
   <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
-    \${badges}
+    ${badges}
   </div>
-</div>\`;
+</div>`;
   }
 
-  return \`
+  return `
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <div style="width:700px;background:linear-gradient(160deg,#FFF8EC 0%,#FEF0F8 50%,#EEF4FF 100%);border:3px solid #E8C87A;border-radius:24px;padding:0;font-family:'Be Vietnam Pro',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;margin:0 auto;">
   <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:22px 26px 18px;position:relative;overflow:hidden;">
     <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
     <div style="position:absolute;bottom:-30px;left:30px;width:80px;height:80px;background:rgba(255,255,255,0.06);border-radius:50%;"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <span style="background:#FFD700;color:#1a1a2e;font-size:12px;font-weight:900;padding:5px 14px;border-radius:20px;letter-spacing:0.5px;">\${subject.toUpperCase()} • Lớp \${grade}</span>
-      <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:4px 12px;border-radius:20px;">\${bookTag}</span>
+      <span style="background:#FFD700;color:#1a1a2e;font-size:12px;font-weight:900;padding:5px 14px;border-radius:20px;letter-spacing:0.5px;">${subject.toUpperCase()} • Lớp ${grade}</span>
+      <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:4px 12px;border-radius:20px;">${bookTag}</span>
     </div>
-    <div style="text-align:center;color:white;font-size:22px;font-weight:900;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.2);">\${data.title}</div>
+    <div style="text-align:center;color:white;font-size:22px;font-weight:900;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.2);">${data.title}</div>
     <div style="text-align:center;margin-top:14px;font-size:70px;line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.2));">
-      \${data.mainEmoji || '📚'}
+      ${data.mainEmoji || '📚'}
     </div>
   </div>
-  \${sectionsHTML}
-  \${remindersHTML}
-</div>\`;
+  ${sectionsHTML}
+  ${remindersHTML}
+</div>`;
 }
 
 // ── GEMINI API ───────────────────────────────────────────
