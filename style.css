@@ -117,9 +117,9 @@ html,body { height:100%; font-family:var(--font); background:var(--bg-base); col
 .internet-badge svg { width:15px; height:15px; }
 
 /* Infographic wrapper */
-.infographic-wrapper { display:flex; justify-content:center; animation:fadeInUp 0.5s ease; }
+.infographic-wrapper { display:flex; justify-content:center; animation:fadeInUp 0.5s ease; overflow:visible; }
 @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-#infographicOutput { width:700px; font-family:'Be Vietnam Pro',sans-serif; }
+#infographicOutput { width:100%; max-width:700px; font-family:'Be Vietnam Pro',sans-serif; }
 
 /* Toast */
 .toast { position:fixed; bottom:26px; right:26px; z-index:9999; background:var(--bg-card2); color:var(--text-main); border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 18px; font-size:0.85rem; font-weight:500; box-shadow:var(--shadow); animation:slideIn 0.3s ease; max-width:340px; }
@@ -168,4 +168,11 @@ html,body { height:100%; font-family:var(--font); background:var(--bg-base); col
 .modal-footer { padding:16px 24px; border-top:1px solid var(--border); background:var(--bg-card2); display:flex; justify-content:flex-end; }
 
 /* Responsive */
-@media(max-width:960px) { .main-layout{grid-template-columns:1fr} .control-panel{max-height:none;border-right:none;border-bottom:1px solid var(--border)} #infographicOutput{width:100%} }
+@media(max-width:960px) {
+  .main-layout{grid-template-columns:1fr}
+  .control-panel{max-height:none;border-right:none;border-bottom:1px solid var(--border)}
+  #infographicOutput{width:100%;max-width:100%}
+  #infographicOutput > div{width:100% !important;max-width:100% !important}
+  .preview-body{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .infographic-wrapper{overflow:visible}
+}

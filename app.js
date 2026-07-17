@@ -454,7 +454,7 @@ function buildInfographicHTML(data, subject, grade) {
 
   return `
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<div style="width:700px;background:linear-gradient(160deg,#FFF8EC 0%,#FEF0F8 50%,#EEF4FF 100%);border:3px solid #E8C87A;border-radius:24px;padding:0;font-family:'Be Vietnam Pro',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;margin:0 auto;">
+<div style="width:100%;max-width:700px;background:linear-gradient(160deg,#FFF8EC 0%,#FEF0F8 50%,#EEF4FF 100%);border:3px solid #E8C87A;border-radius:24px;padding:0;font-family:'Be Vietnam Pro',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;margin:0 auto;">
   <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:22px 26px 18px;position:relative;overflow:hidden;">
     <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
     <div style="position:absolute;bottom:-30px;left:30px;width:80px;height:80px;background:rgba(255,255,255,0.06);border-radius:50%;"></div>
@@ -524,8 +524,54 @@ function toast(msg, type = 'info') {
 async function exportPNG() {
   if (!state.lastInfoHTML) return;
   if (window.html2canvas) {
+    toast('⏳ Đang tạo ảnh PNG...', 'info');
     try {
-      const canvas = await html2canvas(infographicOutput, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      // Tạm thời mở rộng container để chụp toàn bộ nội dung (fix mobile bị cắt)
+      const wrapper = document.getElementById('infographicWrapper');
+      const output = infographicOutput;
+      const innerDiv = output.querySelector(':scope > div');
+      
+      // Lưu style gốc
+      const origWrapperOverflow = wrapper.style.overflow;
+      const origOutputWidth = output.style.width;
+      const origOutputMaxWidth = output.style.maxWidth;
+      const origOutputOverflow = output.style.overflow;
+      const origInnerWidth = innerDiv ? innerDiv.style.width : '';
+      const origInnerMaxWidth = innerDiv ? innerDiv.style.maxWidth : '';
+      
+      // Tạm set style để chụp đầy đủ
+      wrapper.style.overflow = 'visible';
+      output.style.width = '700px';
+      output.style.maxWidth = 'none';
+      output.style.overflow = 'visible';
+      if (innerDiv) {
+        innerDiv.style.width = '700px';
+        innerDiv.style.maxWidth = 'none';
+      }
+      
+      // Chờ reflow
+      await new Promise(r => setTimeout(r, 100));
+      
+      const canvas = await html2canvas(output, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        width: 700,
+        windowWidth: 750,
+        scrollX: 0,
+        scrollY: 0
+      });
+      
+      // Khôi phục style gốc
+      wrapper.style.overflow = origWrapperOverflow;
+      output.style.width = origOutputWidth;
+      output.style.maxWidth = origOutputMaxWidth;
+      output.style.overflow = origOutputOverflow;
+      if (innerDiv) {
+        innerDiv.style.width = origInnerWidth;
+        innerDiv.style.maxWidth = origInnerMaxWidth;
+      }
+      
       const a = document.createElement('a'); a.href = canvas.toDataURL('image/png');
       a.download = `infographic_${Date.now()}.png`; a.click();
       toast('✅ Đã tải PNG!', 'success');
@@ -541,7 +587,12 @@ async function exportPNG() {
 // ── EXPORT HTML ───────────────────────────────────────────
 function exportHTML() {
   if (!state.lastInfoHTML) return;
-  const full = `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"/><title>Infographic SGK</title><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet"/><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#f0f1ff;display:flex;justify-content:center;padding:40px 20px;font-family:'Be Vietnam Pro',sans-serif}</style></head><body>${state.lastInfoHTML}</body></html>`;
+  // Khi xuất HTML, đảm bảo nội dung có width cố định 700px để hiển thị đúng
+  const exportHTML = state.lastInfoHTML.replace(
+    /width:\s*100%;\s*max-width:\s*700px/g,
+    'width:700px;max-width:700px'
+  );
+  const full = `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"/><title>Infographic SGK</title><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet"/><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#f0f1ff;display:flex;justify-content:center;padding:40px 20px;font-family:'Be Vietnam Pro',sans-serif}</style></head><body>${exportHTML}</body></html>`;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([full], { type: 'text/html;charset=utf-8' }));
   a.download = `infographic_${Date.now()}.html`; a.click();
@@ -554,7 +605,52 @@ async function exportPDF() {
   if (window.html2canvas && window.jspdf) {
     toast('⏳ Đang tạo PDF...', 'info');
     try {
-      const canvas = await html2canvas(infographicOutput, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      // Tạm thời mở rộng container để chụp toàn bộ nội dung (fix mobile bị cắt)
+      const wrapper = document.getElementById('infographicWrapper');
+      const output = infographicOutput;
+      const innerDiv = output.querySelector(':scope > div');
+      
+      // Lưu style gốc
+      const origWrapperOverflow = wrapper.style.overflow;
+      const origOutputWidth = output.style.width;
+      const origOutputMaxWidth = output.style.maxWidth;
+      const origOutputOverflow = output.style.overflow;
+      const origInnerWidth = innerDiv ? innerDiv.style.width : '';
+      const origInnerMaxWidth = innerDiv ? innerDiv.style.maxWidth : '';
+      
+      // Tạm set style để chụp đầy đủ
+      wrapper.style.overflow = 'visible';
+      output.style.width = '700px';
+      output.style.maxWidth = 'none';
+      output.style.overflow = 'visible';
+      if (innerDiv) {
+        innerDiv.style.width = '700px';
+        innerDiv.style.maxWidth = 'none';
+      }
+      
+      // Chờ reflow
+      await new Promise(r => setTimeout(r, 100));
+      
+      const canvas = await html2canvas(output, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        width: 700,
+        windowWidth: 750,
+        scrollX: 0,
+        scrollY: 0
+      });
+      
+      // Khôi phục style gốc
+      wrapper.style.overflow = origWrapperOverflow;
+      output.style.width = origOutputWidth;
+      output.style.maxWidth = origOutputMaxWidth;
+      output.style.overflow = origOutputOverflow;
+      if (innerDiv) {
+        innerDiv.style.width = origInnerWidth;
+        innerDiv.style.maxWidth = origInnerMaxWidth;
+      }
+      
       const imgData = canvas.toDataURL('image/jpeg', 0.98);
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -562,24 +658,49 @@ async function exportPDF() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      const canvasRatio = canvas.height / canvas.width;
-      
       // Lề 10mm mỗi bên
       const margin = 10;
-      let finalWidth = pdfWidth - margin * 2; 
-      let finalHeight = finalWidth * canvasRatio;
+      const usableWidth = pdfWidth - margin * 2;
+      const usableHeight = pdfHeight - margin * 2;
       
-      // Nếu chiều cao vượt quá 1 trang A4 thì bóp lại theo chiều cao
-      if (finalHeight > (pdfHeight - margin * 2)) { 
-        finalHeight = pdfHeight - margin * 2;
-        finalWidth = finalHeight / canvasRatio;
+      // Tính kích thước ảnh trên PDF, giữ nguyên tỉ lệ theo chiều rộng
+      const imgWidth = usableWidth;
+      const imgHeight = (canvas.height * usableWidth) / canvas.width;
+      
+      // Nếu ảnh vừa 1 trang → đặt vào 1 trang, căn giữa
+      if (imgHeight <= usableHeight) {
+        const x = margin;
+        const y = (pdfHeight - imgHeight) / 2;
+        pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
+      } else {
+        // Ảnh dài hơn 1 trang → chia thành nhiều trang
+        let yOffset = 0; // vị trí cắt trên ảnh gốc (tính theo mm trên PDF)
+        let pageIndex = 0;
+        
+        while (yOffset < imgHeight) {
+          if (pageIndex > 0) pdf.addPage();
+          
+          // Tính phần ảnh cần hiển thị trên trang này
+          const sliceHeight = Math.min(usableHeight, imgHeight - yOffset);
+          
+          // Dùng canvas con để cắt phần ảnh tương ứng
+          const sourceY = (yOffset / imgHeight) * canvas.height;
+          const sourceH = (sliceHeight / imgHeight) * canvas.height;
+          
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = Math.round(sourceH);
+          const ctx = sliceCanvas.getContext('2d');
+          ctx.drawImage(canvas, 0, Math.round(sourceY), canvas.width, Math.round(sourceH), 0, 0, canvas.width, Math.round(sourceH));
+          
+          const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.98);
+          pdf.addImage(sliceData, 'JPEG', margin, margin, imgWidth, sliceHeight);
+          
+          yOffset += usableHeight;
+          pageIndex++;
+        }
       }
       
-      // Căn giữa trang
-      const x = (pdfWidth - finalWidth) / 2;
-      const y = (pdfHeight - finalHeight) / 2;
-      
-      pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight);
       pdf.save(`infographic_${Date.now()}.pdf`);
       toast('✅ Đã tải PDF!', 'success');
     } catch (e) {
